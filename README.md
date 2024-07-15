@@ -1,15 +1,12 @@
-![trpc-openapi](assets/trpc-openapi-readme.png)
+![@lilyrose2798/trpc-openapi](assets/trpc-openapi-readme.png)
 
 <div align="center">
-  <h1>trpc-openapi</h1>
-  <a href="https://www.npmjs.com/package/trpc-openapi"><img src="https://img.shields.io/npm/v/trpc-openapi.svg?style=flat&color=brightgreen" target="_blank" /></a>
+  <h1>@lilyrose2798/trpc-openapi</h1>
+  <a href="https://www.npmjs.com/package/@lilyrose2798/trpc-openapi"><img src="https://img.shields.io/npm/v/@lilyrose2798/trpc-openapi.svg?style=flat&color=brightgreen" target="_blank" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-black" /></a>
-  <a href="https://trpc.io/discord" target="_blank"><img src="https://img.shields.io/badge/chat-discord-blue.svg" /></a>
   <br />
   <hr />
 </div>
-
-#### `trpc-openapi` is maintained by ProsePilot - simple, fast and free online [writing tools](https://www.prosepilot.com/tools).
 
 ---
 
@@ -17,24 +14,24 @@
 
 - Easy REST endpoints for your tRPC procedures.
 - Perfect for incremental adoption.
-- OpenAPI version 3.0.3.
+- Supports all OpenAPI versions.
 
 ## Usage
 
-**1. Install `trpc-openapi`.**
+**1. Install `@lilyrose2798/trpc-openapi`.**
 
 ```bash
 # npm
-npm install trpc-openapi
+npm install @lilyrose2798/trpc-openapi
 # yarn
-yarn add trpc-openapi
+yarn add @lilyrose2798/trpc-openapi
 ```
 
 **2. Add `OpenApiMeta` to your tRPC instance.**
 
 ```typescript
 import { initTRPC } from '@trpc/server';
-import { OpenApiMeta } from 'trpc-openapi';
+import { OpenApiMeta } from '@lilyrose2798/trpc-openapi';
 
 const t = initTRPC.meta<OpenApiMeta>().create(); /* 👈 */
 ```
@@ -56,7 +53,7 @@ export const appRouter = t.router({
 **4. Generate an OpenAPI document.**
 
 ```typescript
-import { generateOpenApiDocument } from 'trpc-openapi';
+import { generateOpenApiDocument } from '@lilyrose2798/trpc-openapi';
 
 import { appRouter } from '../appRouter';
 
@@ -68,7 +65,7 @@ export const openApiDocument = generateOpenApiDocument(appRouter, {
 });
 ```
 
-**5. Add an `trpc-openapi` handler to your app.**
+**5. Add an `@lilyrose2798/trpc-openapi` handler to your app.**
 
 We currently support adapters for [`Express`](http://expressjs.com/), [`Next.js`](https://nextjs.org/), [`Serverless`](https://www.serverless.com/), [`Fastify`](https://www.fastify.io/), [`Nuxt`](https://nuxtjs.org/) & [`Node:HTTP`](https://nodejs.org/api/http.html).
 
@@ -76,7 +73,7 @@ We currently support adapters for [`Express`](http://expressjs.com/), [`Next.js`
 
 ```typescript
 import http from 'http';
-import { createOpenApiHttpHandler } from 'trpc-openapi';
+import { createOpenApiHttpHandler } from '@lilyrose2798/trpc-openapi';
 
 import { appRouter } from '../appRouter';
 
@@ -89,8 +86,8 @@ server.listen(3000);
 
 ```typescript
 // client.ts
-const res = await fetch('http://localhost:3000/say-hello?name=James', { method: 'GET' });
-const body = await res.json(); /* { greeting: 'Hello James!' } */
+const res = await fetch('http://localhost:3000/say-hello?name=Lily', { method: 'GET' });
+const body = await res.json(); /* { greeting: 'Hello Lily!' } */
 ```
 
 ## Requirements
@@ -140,10 +137,10 @@ export const appRouter = t.router({
 });
 
 // Client
-const res = await fetch('http://localhost:3000/say-hello/James?greeting=Hello' /* 👈 */, {
+const res = await fetch('http://localhost:3000/say-hello/Lily?greeting=Hello' /* 👈 */, {
   method: 'GET',
 });
-const body = await res.json(); /* { greeting: 'Hello James!' } */
+const body = await res.json(); /* { greeting: 'Hello Lily!' } */
 ```
 
 ### Request body
@@ -161,17 +158,17 @@ export const appRouter = t.router({
 });
 
 // Client
-const res = await fetch('http://localhost:3000/say-hello/James' /* 👈 */, {
+const res = await fetch('http://localhost:3000/say-hello/Lily' /* 👈 */, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ greeting: 'Hello' }),
 });
-const body = await res.json(); /* { greeting: 'Hello James!' } */
+const body = await res.json(); /* { greeting: 'Hello Lily!' } */
 ```
 
 ### Custom headers
 
-Any custom headers can be specified in the `meta.openapi.headers` array, these headers will not be validated on request. Please consider using [Authorization](#authorization) for first-class OpenAPI auth/security support.
+Any custom headers can be specified in the `meta.openapi.requestHeaders` and `meta.openapi.responseHeaders` zod object schema, these headers will not be validated. Please consider using [Authorization](#authorization) for first-class OpenAPI auth/security support.
 
 ## HTTP Responses
 
@@ -191,14 +188,14 @@ Explore a [complete example here](examples/with-nextjs/src/server/router.ts).
 
 ```typescript
 import { TRPCError, initTRPC } from '@trpc/server';
-import { OpenApiMeta } from 'trpc-openapi';
+import { OpenApiMeta } from '@lilyrose2798/trpc-openapi';
 
 type User = { id: string; name: string };
 
 const users: User[] = [
   {
     id: 'usr_123',
-    name: 'James',
+    name: 'Lily',
   },
 ];
 
@@ -236,7 +233,7 @@ const res = await fetch('http://localhost:3000/say-hello', {
   method: 'GET',
   headers: { Authorization: 'Bearer usr_123' } /* 👈 */,
 });
-const body = await res.json(); /* { greeting: 'Hello James!' } */
+const body = await res.json(); /* { greeting: 'Hello Lily!' } */
 ```
 
 ## Examples
@@ -250,7 +247,7 @@ Please see [full example here](examples/with-express).
 ```typescript
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import express from 'express';
-import { createOpenApiExpressMiddleware } from 'trpc-openapi';
+import { createOpenApiExpressMiddleware } from '@lilyrose2798/trpc-openapi';
 
 import { appRouter } from '../appRouter';
 
@@ -268,7 +265,7 @@ Please see [full example here](examples/with-nextjs).
 
 ```typescript
 // pages/api/[...trpc].ts
-import { createOpenApiNextHandler } from 'trpc-openapi';
+import { createOpenApiNextHandler } from '@lilyrose2798/trpc-openapi';
 
 import { appRouter } from '../../server/appRouter';
 
@@ -280,7 +277,7 @@ export default createOpenApiNextHandler({ router: appRouter });
 Please see [full example here](examples/with-serverless).
 
 ```typescript
-import { createOpenApiAwsLambdaHandler } from 'trpc-openapi';
+import { createOpenApiAwsLambdaHandler } from '@lilyrose2798/trpc-openapi';
 
 import { appRouter } from './appRouter';
 
@@ -294,7 +291,7 @@ Please see [full example here](examples/with-fastify).
 ```typescript
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify from 'fastify';
-import { fastifyTRPCOpenApiPlugin } from 'trpc-openapi';
+import { fastifyTRPCOpenApiPlugin } from '@lilyrose2798/trpc-openapi';
 
 import { appRouter } from './router';
 
@@ -330,18 +327,21 @@ Please see [full typings here](src/generator/index.ts).
 
 Please see [full typings here](src/types.ts).
 
-| Property       | Type                | Description                                                                                          | Required | Default                |
-| -------------- | ------------------- | ---------------------------------------------------------------------------------------------------- | -------- | ---------------------- |
-| `enabled`      | `boolean`           | Exposes this procedure to `trpc-openapi` adapters and on the OpenAPI document.                       | `false`  | `true`                 |
-| `method`       | `HttpMethod`        | HTTP method this endpoint is exposed on. Value can be `GET`, `POST`, `PATCH`, `PUT` or `DELETE`.     | `true`   | `undefined`            |
-| `path`         | `string`            | Pathname this endpoint is exposed on. Value must start with `/`, specify path parameters using `{}`. | `true`   | `undefined`            |
-| `protect`      | `boolean`           | Requires this endpoint to use a security scheme.                                                     | `false`  | `false`                |
-| `summary`      | `string`            | A short summary of the endpoint included in the OpenAPI document.                                    | `false`  | `undefined`            |
-| `description`  | `string`            | A verbose description of the endpoint included in the OpenAPI document.                              | `false`  | `undefined`            |
-| `tags`         | `string[]`          | A list of tags used for logical grouping of endpoints in the OpenAPI document.                       | `false`  | `undefined`            |
-| `headers`      | `ParameterObject[]` | An array of custom headers to add for this endpoint in the OpenAPI document.                         | `false`  | `undefined`            |
-| `contentTypes` | `ContentType[]`     | A set of content types specified as accepted in the OpenAPI document.                                | `false`  | `['application/json']` |
-| `deprecated`   | `boolean`           | Whether or not to mark an endpoint as deprecated                                                     | `false`  | `false`                |
+| Property             | Type                                    | Description                                                                                                                    | Required | Default                 |
+| -------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
+| `enabled`            | `boolean`                               | Exposes this procedure to `trpc-openapi` adapters and on the OpenAPI document.                                                 | `false`  | `true`                  |
+| `method`             | `HttpMethod`                            | HTTP method this endpoint is exposed on. Value can be `GET`, `POST`, `PATCH`, `PUT` or `DELETE`.                               | `true`   | `undefined`             |
+| `path`               | `string`                                | Pathname this endpoint is exposed on. Value must start with `/`, specify path parameters using `{}`.                           | `true`   | `undefined`             |
+| `protect`            | `boolean`                               | Requires this endpoint to use a security scheme.                                                                               | `false`  | `false`                 |
+| `summary`            | `string`                                | A short summary of the endpoint included in the OpenAPI document.                                                              | `false`  | `undefined`             |
+| `description`        | `string`                                | A verbose description of the endpoint included in the OpenAPI document.                                                        | `false`  | `undefined`             |
+| `tags`               | `string[]`                              | A list of tags used for logical grouping of endpoints in the OpenAPI document.                                                 | `false`  | `undefined`             |
+| `requestHeaders`     | `AnyZodObject`                          | A zod object schema describing any custom headers to add to the request for this endpoint in the OpenAPI document.             | `false`  | `undefined`             |
+| `responseHeaders`    | `AnyZodObject`                          | A zod object schema describing any custom headers to add to the response for this endpoint in the OpenAPI document.            | `false`  | `undefined`             |
+| `successDescription` | `string`                                | A string to use as the description for a successful response.                                                                  | `false`  | `'Successful response'` |
+| `errorResponses`     | `number[] \| { [key: number]: string }` | A list of error response codes or an object of response codes and their description to add to the responses for this endpoint. | `false`  | `undefined`             |
+| `contentTypes`       | `OpenApiContentType[]`                  | A set of content types specified as accepted in the OpenAPI document.                                                          | `false`  | `['application/json']`  |
+| `deprecated`         | `boolean`                               | Whether or not to mark an endpoint as deprecated                                                                               | `false`  | `false`                 |
 
 #### CreateOpenApiNodeHttpHandlerOptions
 
@@ -362,7 +362,3 @@ _Still using tRPC v9? See our [`.interop()`](examples/with-interop) example._
 ## License
 
 Distributed under the MIT License. See LICENSE for more information.
-
-## Contact
-
-James Berry - Follow me on Twitter [@jlalmes](https://twitter.com/jlalmes) 💚

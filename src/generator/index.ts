@@ -1,33 +1,33 @@
-import { OpenAPIV3 } from 'openapi-types';
+import { OpenAPIObject, SecuritySchemeObject } from 'openapi3-ts/dist/oas31';
+import { ZodOpenApiObject, ZodOpenApiPathsObject, createDocument } from 'zod-openapi';
 
 import { OpenApiRouter } from '../types';
-import { getOpenApiPathsObject } from './paths';
-import { errorResponseObject } from './schema';
-
-export const openApiVersion = '3.0.3';
+import { getOpenApiPathsObject, mergePaths } from './paths';
 
 export type GenerateOpenApiDocumentOptions = {
   title: string;
   description?: string;
   version: string;
+  openApiVersion?: ZodOpenApiObject['openapi'];
   baseUrl: string;
   docsUrl?: string;
   tags?: string[];
-  securitySchemes?: OpenAPIV3.ComponentsObject['securitySchemes'];
+  securitySchemes?: Record<string, SecuritySchemeObject>;
+  paths?: ZodOpenApiPathsObject;
 };
 
 export const generateOpenApiDocument = (
   appRouter: OpenApiRouter,
   opts: GenerateOpenApiDocumentOptions,
-): OpenAPIV3.Document => {
+): OpenAPIObject => {
   const securitySchemes = opts.securitySchemes || {
     Authorization: {
       type: 'http',
       scheme: 'bearer',
     },
   };
-  return {
-    openapi: openApiVersion,
+  return createDocument({
+    openapi: opts.openApiVersion ?? '3.0.3',
     info: {
       title: opts.title,
       description: opts.description,
@@ -38,14 +38,11 @@ export const generateOpenApiDocument = (
         url: opts.baseUrl,
       },
     ],
-    paths: getOpenApiPathsObject(appRouter, Object.keys(securitySchemes)),
+    paths: mergePaths(getOpenApiPathsObject(appRouter, Object.keys(securitySchemes)), opts.paths),
     components: {
       securitySchemes,
-      responses: {
-        error: errorResponseObject,
-      },
     },
     tags: opts.tags?.map((tag) => ({ name: tag })),
     externalDocs: opts.docsUrl ? { url: opts.docsUrl } : undefined,
-  };
+  });
 };

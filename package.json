@@ -1,8 +1,8 @@
 {
-  "name": "trpc-openapi",
-  "version": "1.2.0",
+  "name": "@lilyrose2798/trpc-openapi",
+  "version": "1.4.1",
   "description": "tRPC OpenAPI",
-  "author": "James Berry <jb@jamesbe.com>",
+  "author": "LilyRose2798 <lily@rose.place>",
   "private": false,
   "license": "MIT",
   "keywords": [
@@ -10,11 +10,23 @@
     "openapi",
     "swagger"
   ],
-  "homepage": "https://github.com/jlalmes/trpc-openapi",
-  "repository": "github:jlalmes/trpc-openapi",
-  "bugs": "https://github.com/jlalmes/trpc-openapi/issues",
-  "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
+  "homepage": "https://github.com/lilyrose2798/trpc-openapi",
+  "repository": "github:lilyrose2798/trpc-openapi",
+  "bugs": "https://github.com/lilyrose2798/trpc-openapi/issues",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.mjs",
+  "typings": "dist/cjs/index.d.ts",
+  "files": [
+    "dist/cjs",
+    "dist/esm"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.mjs",
+      "types": "./dist/cjs/index.d.ts"
+    }
+  },
   "workspaces": [
     ".",
     "examples/with-nextjs",
@@ -26,7 +38,10 @@
   ],
   "scripts": {
     "test": "tsc --noEmit && jest --verbose",
-    "build": "rimraf dist && tsc -p tsconfig.build.json"
+    "build": "rimraf dist && npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.build.cjs.json",
+    "build:esm": "tsc -p tsconfig.build.esm.json",
+    "postbuild": "node rename.js"
   },
   "peerDependencies": {
     "@trpc/server": "^10.0.0",
@@ -37,8 +52,8 @@
     "h3": "^1.6.4",
     "lodash.clonedeep": "^4.5.0",
     "node-mocks-http": "^1.12.2",
-    "openapi-types": "^12.1.1",
-    "zod-to-json-schema": "^3.21.1"
+    "openapi3-ts": "^4.1.2",
+    "zod-openapi": "^2.10.0"
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.1.1",

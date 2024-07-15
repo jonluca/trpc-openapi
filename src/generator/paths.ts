@@ -1,18 +1,41 @@
 import { TRPCError } from '@trpc/server';
-import { OpenAPIV3 } from 'openapi-types';
+import cloneDeep from 'lodash.clonedeep';
+import { z } from 'zod';
+import {
+  ZodOpenApiParameters,
+  ZodOpenApiPathsObject,
+  ZodOpenApiRequestBodyObject,
+  extendZodWithOpenApi,
+} from 'zod-openapi';
 
 import { OpenApiProcedureRecord, OpenApiRouter } from '../types';
 import { acceptsRequestBody } from '../utils/method';
 import { getPathParameters, normalizePath } from '../utils/path';
 import { forEachOpenApiProcedure, getInputOutputParsers } from '../utils/procedure';
-import { getParameterObjects, getRequestBodyObject, getResponsesObject } from './schema';
+import {
+  instanceofZodType,
+  instanceofZodTypeLikeVoid,
+  instanceofZodTypeObject,
+  unwrapZodType,
+} from '../utils/zod';
+import { getParameterObjects, getRequestBodyObject, getResponsesObject, hasInputs } from './schema';
+
+extendZodWithOpenApi(z);
+
+export enum HttpMethods {
+  GET = 'get',
+  POST = 'post',
+  PATCH = 'patch',
+  PUT = 'put',
+  DELETE = 'delete',
+}
 
 export const getOpenApiPathsObject = (
   appRouter: OpenApiRouter,
   securitySchemeNames: string[],
-): OpenAPIV3.PathsObject => {
-  const pathsObject: OpenAPIV3.PathsObject = {};
-  const procedures = appRouter._def.procedures as OpenApiProcedureRecord;
+): ZodOpenApiPathsObject => {
+  const pathsObject: ZodOpenApiPathsObject = {};
+  const procedures = cloneDeep(appRouter._def.procedures as OpenApiProcedureRecord);
 
   forEachOpenApiProcedure(procedures, ({ path: procedurePath, type, procedure, openapi }) => {
     const procedureName = `${type}.${procedurePath}`;
@@ -25,13 +48,22 @@ export const getOpenApiPathsObject = (
         });
       }
 
-      const { method, protect, summary, description, tags, headers } = openapi;
+      const {
+        method,
+        protect,
+        summary,
+        description,
+        tags,
+        requestHeaders,
+        responseHeaders,
+        successDescription,
+        errorResponses,
+      } = openapi;
 
       const path = normalizePath(openapi.path);
       const pathParameters = getPathParameters(path);
-      const headerParameters = headers?.map((header) => ({ ...header, in: 'header' })) || [];
 
-      const httpMethod = OpenAPIV3.HttpMethods[method];
+      const httpMethod = HttpMethods[method];
       if (!httpMethod) {
         throw new TRPCError({
           message: 'Method must be GET, POST, PATCH, PUT or DELETE',
@@ -56,45 +88,86 @@ export const getOpenApiPathsObject = (
 
       const { inputParser, outputParser } = getInputOutputParsers(procedure);
 
+      if (!instanceofZodType(inputParser)) {
+        throw new TRPCError({
+          message: 'Input parser expects a Zod validator',
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+      if (!instanceofZodType(outputParser)) {
+        throw new TRPCError({
+          message: 'Output parser expects a Zod validator',
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      }
+      const isInputRequired = !inputParser.isOptional();
+      const o = inputParser?._def?.openapi;
+      const inputSchema = unwrapZodType(inputParser, true).openapi({
+        ...(o?.title ? { title: o?.title } : {}),
+        ...(o?.description ? { description: o?.description } : {}),
+      });
+
+      const requestData: {
+        requestBody?: ZodOpenApiRequestBodyObject;
+        requestParams?: ZodOpenApiParameters;
+      } = {};
+      if (!(pathParameters.length === 0 && instanceofZodTypeLikeVoid(inputSchema))) {
+        if (!instanceofZodTypeObject(inputSchema)) {
+          throw new TRPCError({
+            message: 'Input parser must be a ZodObject',
+            code: 'INTERNAL_SERVER_ERROR',
+          });
+        }
+
+        if (acceptsRequestBody(method)) {
+          requestData.requestBody = getRequestBodyObject(
+            inputSchema,
+            isInputRequired,
+            pathParameters,
+            contentTypes,
+          );
+          requestData.requestParams =
+            getParameterObjects(
+              inputSchema,
+              isInputRequired,
+              pathParameters,
+              requestHeaders,
+              'path',
+            ) || {};
+        } else {
+          requestData.requestParams =
+            getParameterObjects(
+              inputSchema,
+              isInputRequired,
+              pathParameters,
+              requestHeaders,
+              'all',
+            ) || {};
+        }
+      }
+
+      const responses = getResponsesObject(
+        outputParser,
+        httpMethod,
+        responseHeaders,
+        protect ?? false,
+        hasInputs(inputParser),
+        successDescription,
+        errorResponses,
+      );
+
+      const security = protect ? securitySchemeNames.map((name) => ({ [name]: [] })) : undefined;
+
       pathsObject[path] = {
         ...pathsObject[path],
         [httpMethod]: {
           operationId: procedurePath.replace(/\./g, '-'),
           summary,
           description,
-          tags: tags,
-          security: protect ? securitySchemeNames.map((name) => ({ [name]: [] })) : undefined,
-          ...(acceptsRequestBody(method)
-            ? {
-                requestBody: getRequestBodyObject(
-                  inputParser,
-                  pathParameters,
-                  contentTypes,
-                  openapi.example?.request,
-                ),
-                parameters: [
-                  ...headerParameters,
-                  ...(getParameterObjects(
-                    inputParser,
-                    pathParameters,
-                    'path',
-                    openapi.example?.request,
-                  ) || []),
-                ],
-              }
-            : {
-                requestBody: undefined,
-                parameters: [
-                  ...headerParameters,
-                  ...(getParameterObjects(
-                    inputParser,
-                    pathParameters,
-                    'all',
-                    openapi.example?.request,
-                  ) || []),
-                ],
-              }),
-          responses: getResponsesObject(outputParser, openapi.example?.response, openapi.responseHeaders),
+          tags,
+          security,
+          ...requestData,
+          responses,
           ...(openapi.deprecated ? { deprecated: openapi.deprecated } : {}),
         },
       };
@@ -106,4 +179,15 @@ export const getOpenApiPathsObject = (
   });
 
   return pathsObject;
+};
+
+export const mergePaths = (x?: ZodOpenApiPathsObject, y?: ZodOpenApiPathsObject) => {
+  if (x === undefined) return y;
+  if (y === undefined) return x;
+  const obj: ZodOpenApiPathsObject = x;
+  for (const [k, v] of Object.entries(y)) {
+    if (k in obj) obj[k] = { ...obj[k], ...v };
+    else obj[k] = v;
+  }
+  return obj;
 };

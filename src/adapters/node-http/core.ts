@@ -5,7 +5,7 @@ import {
   NodeHTTPResponse,
 } from '@trpc/server/dist/adapters/node-http';
 import cloneDeep from 'lodash.clonedeep';
-import { ZodError, z } from 'zod';
+import { ZodError, ZodTypeAny, z } from 'zod';
 
 import { generateOpenApiDocument } from '../../generator';
 import {
@@ -19,7 +19,7 @@ import { acceptsRequestBody } from '../../utils/method';
 import { normalizePath } from '../../utils/path';
 import { getInputOutputParsers } from '../../utils/procedure';
 import {
-  instanceofZodTypeCoercible,
+  coerceSchema,
   instanceofZodTypeLikeVoid,
   instanceofZodTypeObject,
   unwrapZodType,
@@ -102,8 +102,8 @@ export const createOpenApiNodeHttpHandler = <
       }
 
       const useBody = acceptsRequestBody(method);
-      const schema = getInputOutputParsers(procedure.procedure).inputParser as z.ZodTypeAny;
-      const unwrappedSchema = unwrapZodType(schema, true);
+      const inputParser = getInputOutputParsers(procedure.procedure).inputParser as ZodTypeAny;
+      const unwrappedSchema = unwrapZodType(inputParser, true);
 
       // input should stay undefined if z.void()
       if (!instanceofZodTypeLikeVoid(unwrappedSchema)) {
@@ -114,16 +114,8 @@ export const createOpenApiNodeHttpHandler = <
       }
 
       // if supported, coerce all string values to correct types
-      if (zodSupportsCoerce) {
-        if (instanceofZodTypeObject(unwrappedSchema)) {
-          Object.values(unwrappedSchema.shape).forEach((shapeSchema) => {
-            const unwrappedShapeSchema = unwrapZodType(shapeSchema, false);
-            if (instanceofZodTypeCoercible(unwrappedShapeSchema)) {
-              unwrappedShapeSchema._def.coerce = true;
-            }
-          });
-        }
-      }
+      if (zodSupportsCoerce && instanceofZodTypeObject(unwrappedSchema))
+        coerceSchema(unwrappedSchema);
 
       ctx = await createContext?.({ req, res });
       const caller = router.createCaller(ctx);
@@ -181,6 +173,7 @@ export const createOpenApiNodeHttpHandler = <
       const statusCode = meta?.status ?? TRPC_ERROR_CODE_HTTP_STATUS[error.code] ?? 500;
       const headers = meta?.headers ?? {};
       const body: OpenApiErrorResponse = {
+        ...errorShape, // Pass the error through
         message: isInputValidationError
           ? 'Input validation failed'
           : errorShape?.message ?? error.message ?? 'An error occurred',
